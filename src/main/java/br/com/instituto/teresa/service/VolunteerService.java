@@ -2,6 +2,7 @@ package br.com.instituto.teresa.service;
 
 import java.util.List;
 
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import br.com.instituto.teresa.domain.Volunteer;
@@ -31,7 +32,7 @@ public class VolunteerService {
         return volunteerRepository.findAll();
     }
 
-    public void deletar(Long id) {
+    public void deletar(@NonNull Long id) {
         if (!volunteerRepository.existsById(id)) {
             throw new jakarta.persistence.EntityNotFoundException("Voluntário não encontrado: " + id);
         }

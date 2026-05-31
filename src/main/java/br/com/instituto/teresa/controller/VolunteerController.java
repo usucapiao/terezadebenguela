@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +43,7 @@ public class VolunteerController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<Void> deletar(@PathVariable @NonNull Long id) {
         volunteerService.deletar(id);
         return ResponseEntity.noContent().build();
     }

@@ -50,7 +50,7 @@
 }
 
 .hero-bg {
-  background-image: url("https://ibirapitanga.org.br/wp-content/uploads/2023/07/banner-site.png");
+  background-image: url("/assets/banner-site.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

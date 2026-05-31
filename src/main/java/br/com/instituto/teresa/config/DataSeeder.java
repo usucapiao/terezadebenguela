@@ -136,7 +136,7 @@ public class DataSeeder implements CommandLineRunner {
                     "Anteriormente conhecido como Festival de Pesca, o Festival de Praia é um evento estratégico que movimenta o turismo e fortalece a cultura local de Vila Bela da Santíssima Trindade. Realizado anualmente entre setembro e outubro, representa uma importante oportunidade de desenvolvimento econômico e cultural para a região.");
             p2.setImpact(
                     "O festival é fundamental para o desenvolvimento turístico da região, proporcionando visibilidade para grupos culturais que não conseguem financiamento direto da prefeitura e criando oportunidades econômicas para a comunidade local.");
-            p2.setImage("");
+            p2.setImage("assets/praia.webp");
             p2.setFeatures(Arrays.asList(
                     new ProjectFeature("fas fa-calendar-alt", "Realizado anualmente entre setembro e outubro"),
                     new ProjectFeature("fas fa-plane", "Movimenta o turismo regional e gera renda local"),
