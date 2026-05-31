@@ -1,11 +1,15 @@
 package br.com.instituto.teresa.controller;
 
 import br.com.instituto.teresa.dto.ProjectResponseDTO;
+import br.com.instituto.teresa.config.SecurityConfig;
+import br.com.instituto.teresa.repository.AdminUserRepository;
 import br.com.instituto.teresa.service.ProjectService;
+import br.com.instituto.teresa.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProjectController.class)
+@Import(SecurityConfig.class)
 public class ProjectControllerTest {
 
     @Autowired
@@ -23,6 +28,12 @@ public class ProjectControllerTest {
 
     @MockitoBean
     private ProjectService projectService;
+
+    @MockitoBean
+    private TokenService tokenService;
+
+    @MockitoBean
+    private AdminUserRepository adminUserRepository;
 
     @Test
     public void testGetAllProjects() throws Exception {

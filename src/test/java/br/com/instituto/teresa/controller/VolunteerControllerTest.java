@@ -1,6 +1,9 @@
 package br.com.instituto.teresa.controller;
 
 import br.com.instituto.teresa.dto.VolunteerRequestDTO;
+import br.com.instituto.teresa.config.SecurityConfig;
+import br.com.instituto.teresa.repository.AdminUserRepository;
+import br.com.instituto.teresa.service.TokenService;
 import br.com.instituto.teresa.service.VolunteerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -8,6 +11,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(VolunteerController.class)
+@Import(SecurityConfig.class)
 public class VolunteerControllerTest {
 
     @Autowired
@@ -23,6 +28,12 @@ public class VolunteerControllerTest {
 
     @MockitoBean
     private VolunteerService volunteerService;
+
+    @MockitoBean
+    private TokenService tokenService;
+
+    @MockitoBean
+    private AdminUserRepository adminUserRepository;
 
     @Autowired
     private ObjectMapper objectMapper;

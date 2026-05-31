@@ -1,11 +1,12 @@
 # Instituto Tereza de Benguela — Portal Web
 
-![Java](https://img.shields.io/badge/Java-21-blue?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.0-6DB33F?logo=springboot&logoColor=white)
+![Java](https://img.shields.io/badge/Java-25-blue?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.14-6DB33F?logo=springboot&logoColor=white)
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-6DB33F?logo=springsecurity&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Produção-4169E1?logo=postgresql&logoColor=white)
 ![H2](https://img.shields.io/badge/H2-Desenvolvimento-003545)
-![Maven](https://img.shields.io/badge/Maven-Wrapper-C71A36?logo=apachemaven&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-3.9.14-C71A36?logo=apachemaven&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Concluído-success)
 
 Portal web completo do **Instituto Tereza de Benguela**, organização dedicada à preservação da cultura quilombola de **Vila Bela da Santíssima Trindade – MT**. O sistema combina uma API RESTful em Java com um frontend estático, além de um painel administrativo (CMS) para gestão de todo o conteúdo institucional.
@@ -22,6 +23,9 @@ Portal web completo do **Instituto Tereza de Benguela**, organização dedicada 
 - [Pré-requisitos](#pré-requisitos)
 - [Configuração do Ambiente](#configuração-do-ambiente)
 - [Como Executar](#como-executar)
+  - [Desenvolvimento local (H2)](#desenvolvimento-local-h2)
+  - [Com Docker Compose (recomendado para produção)](#com-docker-compose-recomendado-para-produção)
+  - [JAR direto (sem Docker)](#jar-direto-sem-docker)
 - [Acesso ao Sistema](#acesso-ao-sistema)
 - [API REST — Referência de Endpoints](#api-rest--referência-de-endpoints)
 - [Modelo de Dados](#modelo-de-dados)
@@ -126,18 +130,18 @@ Requisições subsequentes (rotas protegidas):
 ### Backend
 | Tecnologia | Versão | Finalidade |
 |---|---|---|
-| Java | 21 | Linguagem principal |
-| Spring Boot | 3.4.0 | Framework web e DI |
+| Java | **25** | Linguagem principal |
+| Spring Boot | **3.5.14** | Framework web e DI |
 | Spring Data JPA | (Boot) | Abstração do banco de dados |
 | Spring Security | (Boot) | Autenticação e autorização |
 | Spring Validation | (Boot) | Validação de DTOs com Jakarta Bean Validation |
 | Auth0 Java JWT | 4.4.0 | Geração e validação de tokens JWT |
 | H2 Database | (Boot) | Banco em arquivo para desenvolvimento |
 | PostgreSQL | (Boot) | Banco relacional para produção |
-| Maven Wrapper | — | Gerenciamento de dependências e build |
+| Maven Wrapper | 3.9.14 | Gerenciamento de dependências e build |
 | JUnit 5 + MockMvc | (Boot Test) | Testes de integração dos controllers |
 
-> Nota: **Lombok não é utilizado**. Todas as entidades foram escritas em Java explícito com getters, setters e construtores manuais — decisão de projeto para transparência do código.
+> **Lombok não é utilizado.** Todas as entidades foram escritas em Java explícito com getters, setters e construtores manuais — decisão de projeto para transparência do código.
 
 ### Frontend
 | Tecnologia | Finalidade |
@@ -146,6 +150,13 @@ Requisições subsequentes (rotas protegidas):
 | JavaScript (Vanilla ES6+) | Lógica assíncrona, consumo da API via `fetch()` |
 | Tailwind CSS (CDN) | Utilitários de estilo |
 | Font Awesome (CDN) | Iconografia |
+
+### Infraestrutura
+| Tecnologia | Finalidade |
+|---|---|
+| Docker | Containerização da aplicação (imagem `eclipse-temurin:25-jre-alpine`) |
+| Docker Compose | Orquestração de app + PostgreSQL |
+| PostgreSQL 17 | Banco de dados em produção/Docker |
 
 ---
 
@@ -193,18 +204,28 @@ Requisições subsequentes (rotas protegidas):
 │       └── controller/                         # Testes de integração MockMvc
 ├── data/                                       # Arquivo H2 (gerado em runtime)
 ├── uploads/                                    # Mídias enviadas pelo admin (gerado em runtime)
+├── Dockerfile                                  # Build multi-stage (Maven 3.9 + JRE 25 Alpine)
+├── docker-compose.yml                          # Orquestração app + PostgreSQL 17
+├── .dockerignore
 ├── .env.example                                # Template de variáveis de ambiente
 ├── pom.xml
-└── mvnw / mvnw.cmd                             # Maven Wrapper
+└── mvnw / mvnw.cmd                             # Maven Wrapper (3.9.14)
 ```
 
 ---
 
 ## Pré-requisitos
 
-- **JDK 21** ou superior ([Download](https://adoptium.net/))
+### Desenvolvimento local
+
+- **JDK 25** ([Download Temurin](https://adoptium.net/))
 - **Maven** — opcional; o projeto inclui o wrapper `./mvnw`
-- **PostgreSQL** — apenas para ambiente de produção
+- **PostgreSQL** — apenas se executar com o perfil PostgreSQL em vez de H2
+
+### Com Docker (recomendado)
+
+- **Docker** 24+ e **Docker Compose** v2+ ([Instalação](https://docs.docker.com/get-docker/))
+- Nenhuma instalação local de Java ou PostgreSQL é necessária
 
 ---
 
@@ -216,22 +237,30 @@ O projeto usa variáveis de ambiente para isolar credenciais do código-fonte. C
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` criado:
+Edite o arquivo `.env` criado. As variáveis disponíveis são:
 
 ```properties
+# Segredo JWT — gere um valor aleatório seguro:
+# openssl rand -hex 32
+JWT_SECRET=TROQUE_POR_UMA_STRING_SECRETA_LONGA
+
 # H2 Database (desenvolvimento local)
 DB_H2_URL=jdbc:h2:file:./data/teresadb;DB_CLOSE_DELAY=-1
 DB_H2_USERNAME=sa
 DB_H2_PASSWORD=
 
-# PostgreSQL (produção)
-DB_PG_URL=jdbc:postgresql://localhost:5432/teresadb
-DB_PG_USERNAME=SEU_USUARIO
-DB_PG_PASSWORD=SUA_SENHA
+# PostgreSQL — conexão da aplicação Spring Boot
+# Em Docker: host = "db" (nome do serviço no docker-compose.yml)
+# Em local:  host = "localhost"
+DB_PG_URL=jdbc:postgresql://db:5432/teresadb
+DB_PG_USERNAME=teresa
+DB_PG_PASSWORD=TROQUE_POR_SENHA_FORTE
 
-# Segredo JWT — gere um valor aleatório seguro:
-# openssl rand -hex 32
-JWT_SECRET=TROQUE_POR_UMA_STRING_SECRETA_LONGA
+# PostgreSQL — configuração interna do container Docker
+# Deve coincidir com os valores DB_PG_* acima
+POSTGRES_DB=teresadb
+POSTGRES_USER=teresa
+POSTGRES_PASSWORD=TROQUE_POR_SENHA_FORTE
 ```
 
 > O arquivo `.env` está no `.gitignore` e **nunca deve ser commitado**.
@@ -240,7 +269,7 @@ JWT_SECRET=TROQUE_POR_UMA_STRING_SECRETA_LONGA
 
 ## Como Executar
 
-### Desenvolvimento (banco H2)
+### Desenvolvimento local (H2)
 
 No `application.properties`, certifique-se de que o bloco H2 está ativo (descomente as linhas H2 e comente as PostgreSQL). Em seguida:
 
@@ -252,7 +281,36 @@ No `application.properties`, certifique-se de que o bloco H2 está ativo (descom
 mvnw.cmd spring-boot:run
 ```
 
-### Build (gerar JAR)
+### Com Docker Compose (recomendado para produção)
+
+Sobe automaticamente a aplicação Spring Boot **e** o PostgreSQL em containers isolados:
+
+```bash
+# 1. Configure as variáveis
+cp .env.example .env
+# edite .env com JWT_SECRET, DB_PG_PASSWORD e POSTGRES_PASSWORD reais
+
+# 2. Construa a imagem e suba os containers
+docker compose up --build
+
+# 3. Para rodar em background
+docker compose up --build -d
+
+# 4. Para parar
+docker compose down
+
+# Para remover também os volumes (apaga dados do banco e uploads)
+docker compose down -v
+```
+
+O primeiro `docker compose up --build` compila o projeto dentro do container (Maven + JDK 25 Alpine), sem precisar de Java instalado localmente.
+
+**Portas e volumes:**
+- Aplicação disponível em `http://localhost:8080`
+- Volume `postgres_data`: persiste o banco de dados entre restarts
+- Volume `uploads_data`: persiste os arquivos enviados pelo painel admin
+
+### JAR direto (sem Docker)
 
 ```bash
 ./mvnw clean package -DskipTests
@@ -269,13 +327,13 @@ java -jar target/teresa-0.0.1-SNAPSHOT.jar
 
 ## Acesso ao Sistema
 
-Após iniciar a aplicação, os seguintes endereços estarão disponíveis:
+Após iniciar a aplicação (local ou Docker), os seguintes endereços estarão disponíveis:
 
 | Recurso | URL |
 |---|---|
 | Página inicial do portal | http://localhost:8080 |
 | Painel administrativo | http://localhost:8080/admin/login.html |
-| Console H2 (apenas em dev) | http://localhost:8080/h2-console |
+| Console H2 (apenas em dev local) | http://localhost:8080/h2-console |
 
 **Credenciais padrão do admin** (criadas automaticamente pelo `DataSeeder`):
 
@@ -450,6 +508,8 @@ Arquivos enviados são:
 
 **Limites:** 10 MB por arquivo (configurável em `application.properties`).
 
+**Em Docker:** os uploads são persistidos no volume nomeado `uploads_data`, montado em `/app/uploads` dentro do container. Os arquivos sobrevivem a restarts e rebuilds da imagem.
+
 **Uso no player de discografia:** O campo `audioFile` aceita:
 - Caminho relativo para arquivo local: `./assets/discografia/00 - Poema para Vila Bela` (o player acrescenta `.mp3`)
 - URL de upload: `/uploads/uuid.mp3` (retornado após envio via painel admin)
@@ -475,7 +535,7 @@ O painel em `/admin/` é uma SPA (Single Page Application) em HTML/JS puro que c
 
 ## Testes
 
-Os testes são de integração, utilizando **MockMvc** com contexto Spring completo e banco H2 em memória.
+Os testes são de integração, utilizando **MockMvc** com slice `@WebMvcTest` e as configurações de segurança reais (`@Import(SecurityConfig.class)`).
 
 ```bash
 # Rodar todos os testes
@@ -487,7 +547,11 @@ Os testes são de integração, utilizando **MockMvc** com contexto Spring compl
 ./mvnw test -Dtest=VolunteerControllerTest
 ```
 
-Cobertura dos testes:
+**Estrutura dos testes de controller:**
+
+Cada teste usa `@WebMvcTest` com `@Import(SecurityConfig.class)` para carregar as regras de rota reais, e declara `@MockitoBean` para os serviços dependentes e para os beans de infraestrutura de segurança (`TokenService`, `AdminUserRepository`).
+
+Cobertura:
 - Validação de inputs inválidos nos endpoints (campos obrigatórios, formatos)
 - Persistência e retorno correto de dados
 - Respostas HTTP esperadas (200, 201, 400, 404)
@@ -518,25 +582,55 @@ O `DataSeeder` popula automaticamente o banco no primeiro início com:
 - Configurações globais do site
 - 1 notícia de exemplo
 
----
+### Produção — PostgreSQL 17
 
-## Migração para Produção
-
-### 1. Configurar o banco PostgreSQL
-
-Crie o banco de dados (a estrutura das tabelas é criada automaticamente pelo Hibernate):
+Em ambiente Docker, o container `db` (postgres:17-alpine) é provisionado automaticamente pelo `docker-compose.yml`. Em ambiente bare-metal, crie o banco manualmente:
 
 ```sql
 CREATE DATABASE teresadb;
 ```
 
-### 2. Ativar o perfil PostgreSQL
+A estrutura das tabelas é criada automaticamente pelo Hibernate (`ddl-auto=update`).
+
+---
+
+## Migração para Produção
+
+### Opção A — Docker Compose (recomendada)
+
+```bash
+# Configure as variáveis de ambiente
+cp .env.example .env
+# Edite .env: JWT_SECRET, DB_PG_PASSWORD, POSTGRES_PASSWORD
+
+# Suba app + banco em background
+docker compose up --build -d
+
+# Verifique os logs
+docker compose logs -f app
+```
+
+O Docker Compose cuida de:
+- Construir a imagem da aplicação (Maven → JAR → imagem JRE 25 Alpine)
+- Provisionar o PostgreSQL com healthcheck antes de iniciar o app
+- Persistir banco e uploads em volumes nomeados
+- Reiniciar os containers automaticamente (`restart: unless-stopped`)
+
+### Opção B — JAR direto no servidor
+
+#### 1. Configurar o banco PostgreSQL
+
+```sql
+CREATE DATABASE teresadb;
+```
+
+#### 2. Ativar o perfil PostgreSQL
 
 Em `src/main/resources/application.properties`:
 - **Comente** todo o bloco `H2 Database (desenvolvimento local)`
 - **Descomente** todo o bloco `PostgreSQL (produção / staging)`
 
-### 3. Definir as variáveis de ambiente no servidor
+#### 3. Definir as variáveis de ambiente no servidor
 
 ```bash
 export DB_PG_URL=jdbc:postgresql://localhost:5432/teresadb
@@ -545,7 +639,7 @@ export DB_PG_PASSWORD=sua_senha
 export JWT_SECRET=$(openssl rand -hex 32)
 ```
 
-### 4. Gerar e executar o JAR
+#### 4. Gerar e executar o JAR
 
 ```bash
 ./mvnw clean package -DskipTests
