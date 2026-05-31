@@ -3,6 +3,8 @@ target/
 
 ### Segredos — nunca commitar ###
 .env
+.env.backup
+.env.render
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

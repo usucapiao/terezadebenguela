@@ -6,6 +6,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Produção-4169E1?logo=postgresql&logoColor=white)
 ![H2](https://img.shields.io/badge/H2-Desenvolvimento-003545)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Render](https://img.shields.io/badge/Render-Deploy-46E3B7?logo=render&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-3.9.14-C71A36?logo=apachemaven&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Concluído-success)
 
@@ -35,6 +36,9 @@ Portal web completo do **Instituto Tereza de Benguela**, organização dedicada 
 - [Testes](#testes)
 - [Banco de Dados](#banco-de-dados)
 - [Migração para Produção](#migração-para-produção)
+  - [Opção A — Docker Compose](#opção-a--docker-compose-recomendada)
+  - [Opção B — JAR direto](#opção-b--jar-direto-no-servidor)
+  - [Opção C — Render (PaaS)](#opção-c--render-paas)
 
 ---
 
@@ -205,6 +209,7 @@ Requisições subsequentes (rotas protegidas):
 ├── data/                                       # Arquivo H2 (gerado em runtime)
 ├── uploads/                                    # Mídias enviadas pelo admin (gerado em runtime)
 ├── Dockerfile                                  # Build multi-stage (Maven 3.9 + JRE 25 Alpine)
+├── Dockerfile.render                           # Variante para deploy no Render (PaaS)
 ├── docker-compose.yml                          # Orquestração app + PostgreSQL 17
 ├── .dockerignore
 ├── .env.example                                # Template de variáveis de ambiente
@@ -645,6 +650,58 @@ export JWT_SECRET=$(openssl rand -hex 32)
 ./mvnw clean package -DskipTests
 java -jar target/teresa-0.0.1-SNAPSHOT.jar
 ```
+
+---
+
+### Opção C — Render (PaaS)
+
+Deploy gerenciado no [Render](https://render.com) usando o `Dockerfile.render`, que adapta a porta via `$PORT` e adiciona flags de JVM para containers.
+
+#### 1. Criar o Web Service no Render
+
+No dashboard do Render, crie um **Web Service** e conecte o repositório GitHub. Configure:
+
+| Campo | Valor |
+|---|---|
+| Environment | Docker |
+| Dockerfile Path | `./Dockerfile.render` |
+| Docker Build Context | `.` |
+
+#### 2. Configurar as variáveis de ambiente
+
+Na aba **Environment** do Web Service, adicione as seguintes variáveis:
+
+| Variável | Valor |
+|---|---|
+| `JWT_SECRET` | string aleatória longa — gere com `openssl rand -base64 48` |
+| `DB_PG_URL` | URL JDBC do banco no Render (veja abaixo) |
+| `DB_PG_USERNAME` | usuário do banco PostgreSQL no Render |
+| `DB_PG_PASSWORD` | senha do banco PostgreSQL no Render |
+
+#### 3. Obter a URL JDBC do banco PostgreSQL
+
+No dashboard do banco PostgreSQL criado no Render, acesse **Connections → Internal Database URL**. O Render exibe no formato `postgres://...`; converta para o formato JDBC trocando apenas o prefixo:
+
+```
+# O Render exibe:
+postgres://usuario:senha@host/banco
+
+# Use em DB_PG_URL:
+jdbc:postgresql://host/banco
+```
+
+> Use a **Internal URL** (não a External) para comunicação interna entre os serviços no Render — sem latência de rede pública e sem custo de egress.
+
+#### 4. Uploads persistentes (opcional)
+
+Os arquivos enviados pelo painel admin são salvos em `/app/uploads` dentro do container. Sem persistência configurada, eles são perdidos a cada redeploy.
+
+Para manter os uploads entre deploys, adicione um **Disk** no painel do Web Service:
+
+| Campo | Valor |
+|---|---|
+| Mount Path | `/app/uploads` |
+| Size | conforme necessidade (mínimo 1 GB) |
 
 ---
 
