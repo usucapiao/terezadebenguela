@@ -6,6 +6,8 @@ import br.com.instituto.teresa.dto.ProjectFeatureDTO;
 import br.com.instituto.teresa.dto.ProjectRequestDTO;
 import br.com.instituto.teresa.dto.ProjectResponseDTO;
 import br.com.instituto.teresa.repository.ProjectRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +19,16 @@ import java.util.stream.Collectors;
 public class ProjectService {
     
     private final ProjectRepository projectRepository;
+    private final FileStorageService fileStorageService;
 
-    public ProjectService(ProjectRepository projectRepository) {
+    public ProjectService(ProjectRepository projectRepository, FileStorageService fileStorageService) {
         this.projectRepository = projectRepository;
+        this.fileStorageService = fileStorageService;
     }
 
-    public List<ProjectResponseDTO> getAllProjects() {
-        return projectRepository.findAll().stream()
-            .map(this::mapToDTO)
-            .collect(Collectors.toList());
+    public Page<ProjectResponseDTO> getAllProjects(Pageable pageable) {
+        return projectRepository.findAll(pageable)
+            .map(this::mapToDTO);
     }
 
     @Transactional
@@ -45,10 +48,10 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(long id) {
-        if (!projectRepository.existsById(id)) {
-            throw new RuntimeException("Projeto não encontrado com o ID: " + id);
-        }
-        projectRepository.deleteById(id);
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Projeto não encontrado com o ID: " + id));
+        fileStorageService.deleteIfUploaded(project.getImage());
+        projectRepository.delete(project);
     }
 
     private void applyDto(Project project, ProjectRequestDTO dto) {

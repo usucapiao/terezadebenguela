@@ -4,10 +4,11 @@ import br.com.instituto.teresa.dto.NewsRequestDTO;
 import br.com.instituto.teresa.dto.NewsResponseDTO;
 import br.com.instituto.teresa.service.NewsService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/news")
@@ -20,13 +21,15 @@ public class NewsController {
     }
 
     @GetMapping
-    public List<NewsResponseDTO> getActiveNews() {
-        return newsService.getActiveNews();
+    public Page<NewsResponseDTO> getActiveNews(
+            @PageableDefault(size = 20) Pageable pageable) {
+        return newsService.getActiveNews(pageable);
     }
 
     @GetMapping("/all")
-    public List<NewsResponseDTO> getAllNews() {
-        return newsService.getAllNews();
+    public Page<NewsResponseDTO> getAllNews(
+            @PageableDefault(size = 20) Pageable pageable) {
+        return newsService.getAllNews(pageable);
     }
 
     @PostMapping

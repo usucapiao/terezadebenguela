@@ -74,7 +74,12 @@ A discografia do portal reúne faixas do **Quilombo Aurora do Quariterê**, grup
 - Gerenciamento de candidaturas de voluntários (visualização de mensagens de motivação)
 - Editor de configurações globais do site (textos, contatos, redes sociais)
 - Upload de imagens (JPG, PNG, GIF, WEBP) e áudios (MP3, OGG, WAV, AAC, FLAC)
+- **Exclusão de mídias limpa o arquivo físico** de `./uploads/` automaticamente ao deletar um projeto, notícia ou faixa de discografia
 - Seletor de ícones Font Awesome integrado
+- Troca de senha do admin via API autenticada (sem precisar resetar o banco)
+
+### Notificações
+- **E-mail automático de candidatura:** ao registrar um novo voluntário, o sistema envia uma notificação por e-mail para o endereço configurado em `MAIL_NOTIFICATION_RECIPIENT` — se SMTP não estiver configurado, a candidatura é salva normalmente e o envio é ignorado silenciosamente
 
 ---
 
@@ -139,6 +144,8 @@ Requisições subsequentes (rotas protegidas):
 | Spring Data JPA | (Boot) | Abstração do banco de dados |
 | Spring Security | (Boot) | Autenticação e autorização |
 | Spring Validation | (Boot) | Validação de DTOs com Jakarta Bean Validation |
+| Spring Mail | (Boot) | Envio de e-mail SMTP para notificações de candidatura |
+| Spring Actuator | (Boot) | Endpoint `/actuator/health` para monitoramento |
 | Auth0 Java JWT | 4.4.0 | Geração e validação de tokens JWT |
 | H2 Database | (Boot) | Banco em arquivo para desenvolvimento |
 | PostgreSQL | (Boot) | Banco relacional para produção |
@@ -246,7 +253,7 @@ Edite o arquivo `.env` criado. As variáveis disponíveis são:
 
 ```properties
 # Segredo JWT — gere um valor aleatório seguro:
-# openssl rand -hex 32
+# openssl rand -hex 64
 JWT_SECRET=TROQUE_POR_UMA_STRING_SECRETA_LONGA
 
 # H2 Database (desenvolvimento local)
@@ -266,6 +273,23 @@ DB_PG_PASSWORD=TROQUE_POR_SENHA_FORTE
 POSTGRES_DB=teresadb
 POSTGRES_USER=teresa
 POSTGRES_PASSWORD=TROQUE_POR_SENHA_FORTE
+
+# Credenciais do painel admin (usadas apenas na primeira inicialização, quando o banco está vazio)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=TROQUE_POR_SENHA_FORTE
+
+# Rate limiting no login (opcional — os valores abaixo são os padrões)
+LOGIN_RATELIMIT_MAX_ATTEMPTS=5
+LOGIN_RATELIMIT_WINDOW_MINUTES=15
+
+# SMTP — notificações de candidatura de voluntário (opcional)
+# Deixe MAIL_HOST em branco para desabilitar o envio.
+# Com Gmail: crie um App Password em myaccount.google.com/apppasswords
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=seuemail@gmail.com
+MAIL_PASSWORD=app_password_aqui
+MAIL_NOTIFICATION_RECIPIENT=destinatario@instituto.org
 ```
 
 > O arquivo `.env` está no `.gitignore` e **nunca deve ser commitado**.
@@ -340,14 +364,15 @@ Após iniciar a aplicação (local ou Docker), os seguintes endereços estarão 
 | Painel administrativo | http://localhost:8080/admin/login.html |
 | Console H2 (apenas em dev local) | http://localhost:8080/h2-console |
 
-**Credenciais padrão do admin** (criadas automaticamente pelo `DataSeeder`):
+**Credenciais padrão do admin** (criadas automaticamente pelo `DataSeeder` na primeira inicialização):
 
-| Campo | Valor |
-|---|---|
-| Usuário | `admin` |
-| Senha | `admin123` |
+| Campo | Variável de ambiente | Valor padrão |
+|---|---|---|
+| Usuário | `ADMIN_USERNAME` | `admin` |
+| Senha | `ADMIN_PASSWORD` | `admin123` |
 
-> Altere a senha após o primeiro acesso em produção.
+> Defina `ADMIN_USERNAME` e `ADMIN_PASSWORD` no `.env` antes de subir a aplicação pela primeira vez em produção.  
+> Após o primeiro acesso, a senha pode ser trocada via `PUT /api/auth/password` sem necessidade de resetar o banco.
 
 **Conexão ao console H2:**
 
@@ -364,39 +389,76 @@ Após iniciar a aplicação (local ou Docker), os seguintes endereços estarão 
 Todas as respostas retornam `Content-Type: application/json`.  
 Rotas protegidas exigem o cabeçalho `Authorization: Bearer <token>`.
 
+### Paginação
+
+Os endpoints de listagem (`/api/projects`, `/api/news`, `/api/news/all`, `/api/volunteers`) suportam paginação via query params:
+
+| Parâmetro | Padrão | Descrição |
+|---|---|---|
+| `page` | `0` | Número da página (base zero) |
+| `size` | `20` | Itens por página |
+| `sort` | campo,direção | Ex: `sort=publishedAt,desc` |
+
+**Exemplo:** `GET /api/news?page=0&size=10`
+
+A resposta retorna um envelope `Page<T>`:
+```json
+{
+  "content": [ { "id": 1, "title": "..." }, ... ],
+  "page": {
+    "size": 10,
+    "number": 0,
+    "totalElements": 42,
+    "totalPages": 5
+  }
+}
+```
+
 ### Autenticação
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | POST | `/api/auth/login` | Não | Autentica e retorna o JWT |
+| PUT | `/api/auth/password` | Sim | Troca a senha do admin autenticado |
 
 **Exemplo de login:**
 ```json
 POST /api/auth/login
-{ "username": "admin", "password": "admin123" }
+{ "login": "admin", "password": "admin123" }
 
 Resposta: { "token": "eyJhbGciOiJIUzI1NiJ9..." }
 ```
+
+**Exemplo de troca de senha:**
+```json
+PUT /api/auth/password
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+{ "currentPassword": "admin123", "newPassword": "novaSenhaForte!" }
+
+Resposta: 204 No Content
+```
+
+> A nova senha deve ter no mínimo 8 caracteres. Retorna `401` se a senha atual estiver incorreta.
 
 ### Projetos
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/api/projects` | Não | Lista todos os projetos |
+| GET | `/api/projects` | Não | Lista projetos paginados |
 | GET | `/api/projects/{id}` | Não | Busca projeto por ID |
 | POST | `/api/projects` | Sim | Cria novo projeto |
 | PUT | `/api/projects/{id}` | Sim | Atualiza projeto |
-| DELETE | `/api/projects/{id}` | Sim | Remove projeto |
+| DELETE | `/api/projects/{id}` | Sim | Remove projeto e apaga imagem de `./uploads/` se aplicável |
 
 ### Notícias
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| GET | `/api/news` | Não | Lista notícias publicadas |
-| GET | `/api/news/all` | Não | Lista todas (incluindo inativas) |
+| GET | `/api/news` | Não | Lista notícias publicadas (paginado, ordem `publishedAt` desc) |
+| GET | `/api/news/all` | Não | Lista todas (incluindo inativas, paginado) |
 | POST | `/api/news` | Sim | Cria notícia |
 | PUT | `/api/news/{id}` | Sim | Atualiza notícia |
-| DELETE | `/api/news/{id}` | Sim | Remove notícia |
+| DELETE | `/api/news/{id}` | Sim | Remove notícia e apaga imagem de `./uploads/` se aplicável |
 
 ### Diretoria (Board)
 
@@ -411,8 +473,8 @@ Resposta: { "token": "eyJhbGciOiJIUzI1NiJ9..." }
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| POST | `/api/volunteers` | Não | Registra candidatura de voluntário |
-| GET | `/api/volunteers` | Sim | Lista candidaturas (inclui `motivation`) |
+| POST | `/api/volunteers` | Não | Registra candidatura e dispara e-mail de notificação |
+| GET | `/api/volunteers` | Sim | Lista candidaturas paginadas (inclui `motivation`) |
 | GET | `/api/volunteer/page` | Não | Conteúdo da página de voluntariado |
 | PUT | `/api/volunteer/page` | Sim | Atualiza textos e benefícios da página |
 
@@ -423,7 +485,13 @@ Resposta: { "token": "eyJhbGciOiJIUzI1NiJ9..." }
 | GET | `/api/discography` | Não | Lista todas as faixas |
 | POST | `/api/discography` | Sim | Adiciona faixa |
 | PUT | `/api/discography/{id}` | Sim | Atualiza faixa |
-| DELETE | `/api/discography/{id}` | Sim | Remove faixa |
+| DELETE | `/api/discography/{id}` | Sim | Remove faixa e apaga áudio de `./uploads/` se aplicável |
+
+### Monitoramento
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| GET | `/actuator/health` | Não | Retorna `{"status":"UP"}` — útil para health checks do Render/Docker |
 
 ### Configurações do Site
 
@@ -501,6 +569,33 @@ AdminUser  (implements UserDetails)
 - O secret do JWT é injetado via variável de ambiente `JWT_SECRET`
 - Filtro `SecurityFilter` implementa `OncePerRequestFilter` — executa uma vez por requisição
 
+### Proteção contra força bruta
+
+O endpoint `POST /api/auth/login` possui rate limiting por IP:
+
+- Bloqueia o IP após **5 tentativas falhas** em uma janela de **15 minutos**
+- Retorna `429 Too Many Requests` enquanto o bloqueio estiver ativo
+- O contador é resetado automaticamente após login bem-sucedido ou expiração da janela
+- Suporta proxies reversos via cabeçalho `X-Forwarded-For` (compatível com Render e Nginx)
+- Configurável via variáveis de ambiente:
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `LOGIN_RATELIMIT_MAX_ATTEMPTS` | `5` | Tentativas falhas antes do bloqueio |
+| `LOGIN_RATELIMIT_WINDOW_MINUTES` | `15` | Duração da janela de bloqueio em minutos |
+
+### Validação do JWT_SECRET na inicialização
+
+A aplicação recusa iniciar se `JWT_SECRET` não estiver configurado com um valor seguro. Caso o secret seja o fallback padrão (`insecure-local-dev-only`), a startup falha com mensagem clara:
+
+```
+IllegalStateException: JWT_SECRET não está configurado com um valor seguro.
+Defina a variável de ambiente JWT_SECRET antes de iniciar a aplicação.
+Gere um valor seguro com: openssl rand -hex 64
+```
+
+> O `.env` local já define um `JWT_SECRET` não-padrão, portanto o desenvolvimento local não é afetado.
+
 ---
 
 ## Upload de Mídias
@@ -510,6 +605,7 @@ Arquivos enviados são:
 2. Renomeados com **UUID** gerado aleatoriamente (evita colisões e path traversal)
 3. Salvos na pasta `./uploads/` na raiz do projeto (fora do JAR)
 4. Servidos publicamente em `/uploads/**`
+5. **Removidos automaticamente do disco** quando a entidade associada (projeto, notícia, faixa) é deletada — arquivos em `/assets/` nunca são afetados
 
 **Limites:** 10 MB por arquivo (configurável em `application.properties`).
 
@@ -579,7 +675,7 @@ DB_H2_PASSWORD=
 No `application.properties`, descomente o bloco H2 e comente o bloco PostgreSQL.
 
 O `DataSeeder` popula automaticamente o banco no primeiro início com:
-- Usuário admin padrão (`admin` / `admin123`)
+- Usuário admin com credenciais definidas por `ADMIN_USERNAME` / `ADMIN_PASSWORD` (padrão: `admin` / `admin123`)
 - 3 projetos institucionais (Festança do Congo, Festival de Praia, Dia da Consciência Negra)
 - 16 faixas da discografia (Quilombo Aurora do Quariterê)
 - 3 membros da diretoria
@@ -673,10 +769,17 @@ Na aba **Environment** do Web Service, adicione as seguintes variáveis:
 
 | Variável | Valor |
 |---|---|
-| `JWT_SECRET` | string aleatória longa — gere com `openssl rand -base64 48` |
+| `JWT_SECRET` | string aleatória longa — gere com `openssl rand -hex 64` |
 | `DB_PG_URL` | URL JDBC do banco no Render (veja abaixo) |
 | `DB_PG_USERNAME` | usuário do banco PostgreSQL no Render |
 | `DB_PG_PASSWORD` | senha do banco PostgreSQL no Render |
+| `ADMIN_USERNAME` | nome de usuário do painel admin (ex: `admin`) |
+| `ADMIN_PASSWORD` | senha do painel admin — use uma senha forte |
+| `MAIL_HOST` | host SMTP (ex: `smtp.gmail.com`) — deixe vazio para desabilitar e-mails |
+| `MAIL_PORT` | porta SMTP (padrão: `587`) |
+| `MAIL_USERNAME` | e-mail remetente |
+| `MAIL_PASSWORD` | senha ou App Password do e-mail remetente |
+| `MAIL_NOTIFICATION_RECIPIENT` | e-mail que receberá as notificações de candidatura |
 
 #### 3. Obter a URL JDBC do banco PostgreSQL
 

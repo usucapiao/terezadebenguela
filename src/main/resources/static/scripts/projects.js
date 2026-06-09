@@ -43,7 +43,7 @@ async function loadProjects() {
 
     try {
       const response = await fetch('/api/projects');
-      const projects = await response.json();
+      const projects = (await response.json()).content;
       window.ProjectsManager.projects = projects;
 
       projectsContainer.innerHTML = renderProjects(projects, 3);

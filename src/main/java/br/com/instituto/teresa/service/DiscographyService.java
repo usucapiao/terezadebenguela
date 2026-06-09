@@ -14,9 +14,11 @@ import java.util.stream.Collectors;
 public class DiscographyService {
 
     private final DiscographyTrackRepository repository;
+    private final FileStorageService fileStorageService;
 
-    public DiscographyService(DiscographyTrackRepository repository) {
+    public DiscographyService(DiscographyTrackRepository repository, FileStorageService fileStorageService) {
         this.repository = repository;
+        this.fileStorageService = fileStorageService;
     }
 
     public List<DiscographyTrackResponseDTO> getAllTracks() {
@@ -44,10 +46,10 @@ public class DiscographyService {
 
     @Transactional
     public void deleteTrack(long id) {
-        if (!repository.existsById(id)) {
-            throw new RuntimeException("Faixa não encontrada: " + id);
-        }
-        repository.deleteById(id);
+        DiscographyTrack track = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Faixa não encontrada: " + id));
+        fileStorageService.deleteIfUploaded(track.getAudioFile());
+        repository.delete(track);
     }
 
     private DiscographyTrackResponseDTO mapToDTO(DiscographyTrack track) {

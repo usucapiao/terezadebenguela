@@ -16,7 +16,7 @@ async function loadNews() {
     list.innerHTML = '<p class="text-gray-500">Carregando...</p>';
     try {
         const res = await fetch('/api/news/all', { headers: getAuthHeaders() });
-        newsData = await res.json();
+        newsData = (await res.json()).content;
         renderNewsList();
     } catch (e) {
         list.innerHTML = '<p class="text-red-500">Erro ao carregar notícias.</p>';

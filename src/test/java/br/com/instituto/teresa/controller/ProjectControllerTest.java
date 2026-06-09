@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
 import java.util.Collections;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -41,10 +43,11 @@ public class ProjectControllerTest {
             1L, "code", "Test Project", "Sub", "Desc", "Impact", "img.jpg", null, Collections.emptyList(), Collections.emptyMap()
         );
 
-        Mockito.when(projectService.getAllProjects()).thenReturn(Arrays.asList(p1));
+        Mockito.when(projectService.getAllProjects(Mockito.any(Pageable.class)))
+               .thenReturn(new PageImpl<>(Arrays.asList(p1)));
 
         mockMvc.perform(get("/api/projects"))
                .andExpect(status().isOk())
-               .andExpect(jsonPath("$[0].title").value("Test Project"));
+               .andExpect(jsonPath("$.content[0].title").value("Test Project"));
     }
 }

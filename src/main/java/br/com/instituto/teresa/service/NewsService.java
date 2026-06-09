@@ -5,6 +5,10 @@ import br.com.instituto.teresa.dto.NewsRequestDTO;
 import br.com.instituto.teresa.dto.NewsResponseDTO;
 import br.com.instituto.teresa.repository.NewsRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,19 +19,29 @@ import java.util.stream.Collectors;
 public class NewsService {
 
     private final NewsRepository newsRepository;
+    private final FileStorageService fileStorageService;
 
-    public NewsService(NewsRepository newsRepository) {
+    public NewsService(NewsRepository newsRepository, FileStorageService fileStorageService) {
         this.newsRepository = newsRepository;
+        this.fileStorageService = fileStorageService;
     }
 
-    public List<NewsResponseDTO> getActiveNews() {
-        return newsRepository.findByActiveTrueOrderByPublishedAtDesc()
-                .stream().map(this::mapToDTO).collect(Collectors.toList());
+    public Page<NewsResponseDTO> getActiveNews(Pageable pageable) {
+        Pageable sorted = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            pageable.getSortOr(Sort.by(Sort.Direction.DESC, "publishedAt"))
+        );
+        return newsRepository.findByActiveTrue(sorted).map(this::mapToDTO);
     }
 
-    public List<NewsResponseDTO> getAllNews() {
-        return newsRepository.findAll()
-                .stream().map(this::mapToDTO).collect(Collectors.toList());
+    public Page<NewsResponseDTO> getAllNews(Pageable pageable) {
+        Pageable sorted = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            pageable.getSortOr(Sort.by(Sort.Direction.DESC, "publishedAt"))
+        );
+        return newsRepository.findAll(sorted).map(this::mapToDTO);
     }
 
     @Transactional
@@ -47,7 +61,10 @@ public class NewsService {
 
     @Transactional
     public void deleteNews(long id) {
-        newsRepository.deleteById(id);
+        News news = newsRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Notícia não encontrada: " + id));
+        fileStorageService.deleteIfUploaded(news.getImageUrl());
+        newsRepository.delete(news);
     }
 
     private void applyDto(News news, NewsRequestDTO dto) {

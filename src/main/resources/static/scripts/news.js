@@ -66,7 +66,7 @@
       try {
         const res = await fetch('/api/news');
         if (!res.ok) throw new Error();
-        allNews = await res.json();
+        allNews = (await res.json()).content;
 
         if (allNews.length === 0) {
           if (section) section.style.display = 'none';

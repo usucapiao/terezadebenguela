@@ -71,7 +71,7 @@ async function loadVolunteers() {
     try {
         const res = await fetch('/api/volunteers', { headers: getAuthHeaders() });
         if (!res.ok) throw new Error();
-        const volunteers = await res.json();
+        const volunteers = (await res.json()).content;
         const container = document.getElementById('volunteers-list');
         container.innerHTML = '';
 

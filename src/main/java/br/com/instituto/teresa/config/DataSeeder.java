@@ -16,9 +16,9 @@ import br.com.instituto.teresa.repository.ProjectRepository;
 import br.com.instituto.teresa.repository.NewsRepository;
 import br.com.instituto.teresa.repository.SiteSettingsRepository;
 import br.com.instituto.teresa.repository.VolunteerPageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -28,20 +28,44 @@ import java.util.Map;
 @Component
 public class DataSeeder implements CommandLineRunner {
 
-    @Autowired private ProjectRepository projectRepository;
-    @Autowired private DiscographyTrackRepository trackRepository;
-    @Autowired private BoardMemberRepository boardMemberRepository;
-    @Autowired private AdminUserRepository adminUserRepository;
-    @Autowired private VolunteerPageRepository volunteerPageRepository;
-    @Autowired private SiteSettingsRepository siteSettingsRepository;
-    @Autowired private NewsRepository newsRepository;
+    private final ProjectRepository projectRepository;
+    private final DiscographyTrackRepository trackRepository;
+    private final BoardMemberRepository boardMemberRepository;
+    private final AdminUserRepository adminUserRepository;
+    private final VolunteerPageRepository volunteerPageRepository;
+    private final SiteSettingsRepository siteSettingsRepository;
+    private final NewsRepository newsRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final String adminUsername;
+    private final String adminPassword;
+
+    public DataSeeder(ProjectRepository projectRepository,
+                      DiscographyTrackRepository trackRepository,
+                      BoardMemberRepository boardMemberRepository,
+                      AdminUserRepository adminUserRepository,
+                      VolunteerPageRepository volunteerPageRepository,
+                      SiteSettingsRepository siteSettingsRepository,
+                      NewsRepository newsRepository,
+                      PasswordEncoder passwordEncoder,
+                      @Value("${admin.username:admin}") String adminUsername,
+                      @Value("${admin.password:admin123}") String adminPassword) {
+        this.projectRepository = projectRepository;
+        this.trackRepository = trackRepository;
+        this.boardMemberRepository = boardMemberRepository;
+        this.adminUserRepository = adminUserRepository;
+        this.volunteerPageRepository = volunteerPageRepository;
+        this.siteSettingsRepository = siteSettingsRepository;
+        this.newsRepository = newsRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.adminUsername = adminUsername;
+        this.adminPassword = adminPassword;
+    }
 
     @Override
     @SuppressWarnings("null")
     public void run(String... args) throws Exception {
         if (adminUserRepository.count() == 0) {
-            String encryptedPassword = new BCryptPasswordEncoder().encode("admin123");
-            AdminUser admin = new AdminUser("admin", encryptedPassword);
+            AdminUser admin = new AdminUser(adminUsername, passwordEncoder.encode(adminPassword));
             adminUserRepository.save(admin);
         }
 

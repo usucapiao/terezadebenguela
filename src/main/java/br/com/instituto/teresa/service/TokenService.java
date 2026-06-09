@@ -8,6 +8,8 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -17,6 +19,17 @@ public class TokenService {
 
     @Value("${api.security.token.secret:my-secret-key-teresa}")
     private String secret;
+
+    @PostConstruct
+    public void validateSecret() {
+        if ("insecure-local-dev-only".equals(secret) || "my-secret-key-teresa".equals(secret)) {
+            throw new IllegalStateException(
+                "JWT_SECRET não está configurado com um valor seguro. " +
+                "Defina a variável de ambiente JWT_SECRET antes de iniciar a aplicação. " +
+                "Gere um valor seguro com: openssl rand -hex 64"
+            );
+        }
+    }
 
     public String generateToken(AdminUser user) {
         try {

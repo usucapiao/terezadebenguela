@@ -13,7 +13,7 @@ async function loadProjects() {
     grid.innerHTML = '<p class="col-span-full text-gray-500">Carregando...</p>';
     try {
         const res = await fetch('/api/projects');
-        projectsData = await res.json();
+        projectsData = (await res.json()).content;
         grid.innerHTML = '';
         projectsData.forEach(project => {
             const card = document.createElement('div');

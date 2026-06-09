@@ -1,7 +1,7 @@
 package br.com.instituto.teresa.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +13,11 @@ import br.com.instituto.teresa.repository.VolunteerRepository;
 public class VolunteerService {
 
     private final VolunteerRepository volunteerRepository;
+    private final EmailService emailService;
 
-    public VolunteerService(VolunteerRepository volunteerRepository) {
+    public VolunteerService(VolunteerRepository volunteerRepository, EmailService emailService) {
         this.volunteerRepository = volunteerRepository;
+        this.emailService = emailService;
     }
 
     public void processVolunteer(VolunteerRequestDTO dto) {
@@ -25,11 +27,16 @@ public class VolunteerService {
         volunteer.setPhone(dto.phone());
         volunteer.setAge(dto.age());
         volunteer.setMotivation(dto.motivation());
-        
+
         volunteerRepository.save(volunteer);
+
+        emailService.sendVolunteerNotification(
+            dto.name(), dto.email(), dto.phone(), dto.age(), dto.motivation()
+        );
     }
-    public List<Volunteer> listarTodos() {
-        return volunteerRepository.findAll();
+
+    public Page<Volunteer> listarTodos(Pageable pageable) {
+        return volunteerRepository.findAll(pageable);
     }
 
     public void deletar(@NonNull Long id) {
