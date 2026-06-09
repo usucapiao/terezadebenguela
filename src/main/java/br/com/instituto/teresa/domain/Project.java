@@ -29,7 +29,7 @@ public class Project {
 
     @ElementCollection // Mapeia uma coleção de tipos básicos ou entidades embutidas (List) relacionada à classe principal
     @CollectionTable(name = "project_features", joinColumns = @JoinColumn(name = "project_id")) // Nomeia a tabela dependente e define qual será sua chave estrangeira
-    private List<ProjectFeature> features;
+    private List<ProjectFeature> features = new java.util.ArrayList<>();
     
     @ElementCollection // Mapeia um Map (chave/valor) que pertence à entidade em uma tabela externa própria
     @CollectionTable(name = "project_details", joinColumns = @JoinColumn(name = "project_id")) // Nome da tabela do Map e sua respectiva foreign key
