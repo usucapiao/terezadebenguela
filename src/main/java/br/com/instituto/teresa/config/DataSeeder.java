@@ -64,8 +64,14 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @SuppressWarnings("null")
     public void run(String... args) throws Exception {
-        if (adminUserRepository.count() == 0) {
+        org.springframework.security.core.userdetails.UserDetails existingAdmin =
+                adminUserRepository.findByLogin(adminUsername);
+        if (existingAdmin == null) {
             AdminUser admin = new AdminUser(adminUsername, passwordEncoder.encode(adminPassword));
+            adminUserRepository.save(admin);
+        } else {
+            AdminUser admin = (AdminUser) existingAdmin;
+            admin.setPassword(passwordEncoder.encode(adminPassword));
             adminUserRepository.save(admin);
         }
 
