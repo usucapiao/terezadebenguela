@@ -237,7 +237,8 @@
       const grid = document.getElementById('news-grid');
       try {
         const res = await fetch('/api/news');
-        allNews = await res.json();
+        if (!res.ok) throw new Error();
+        allNews = (await res.json()).content ?? [];
         if (!allNews.length) {
           grid.innerHTML = `<div class="col-span-full empty-state"><i class="fas fa-newspaper"></i><p class="text-lg font-medium mt-3">Nenhuma notícia publicada ainda.</p></div>`;
           return;
