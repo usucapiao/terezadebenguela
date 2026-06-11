@@ -3,6 +3,7 @@ target/
 
 ### Segredos — nunca commitar ###
 .env
+*.env
 .env.backup
 .env.render
 .env.render.prod.env
